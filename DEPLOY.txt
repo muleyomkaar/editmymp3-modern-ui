@@ -1,0 +1,9 @@
+EDITMYMP3 — CLOUDFLARE PAGES
+
+1. Upload ALL files/folders in this project, including _worker.js.
+2. Cloudflare → Workers & Pages → your project → Settings → Variables and Secrets.
+3. Add encrypted secret: GROQ_API_KEY = your Groq API key.
+4. Redeploy.
+5. Test /api/ai in a browser. GET should return {"error":"Method not allowed."}.
+6. Open /sitemap.xml and confirm it contains your real pages.dev/custom domain.
+7. Add the site to Google Search Console and submit /sitemap.xml.

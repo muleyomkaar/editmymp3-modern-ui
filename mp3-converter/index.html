@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#111111" />
+  <meta name="description" content="Convert MP3 to WAV online for free. Your audio is decoded and converted locally in your browser without uploading the source file." />
+  <title>MP3 Converter Online – Convert MP3 to WAV Free | EditMyMP3</title>
+  <link rel="canonical" href="/mp3-converter/" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="stylesheet" href="/style.css" />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="MP3 Converter Online – Convert MP3 to WAV Free | EditMyMP3" />
+  <meta property="og:description" content="Convert MP3 to WAV privately in your browser." />
+  <meta property="og:url" content="/mp3-converter/" />
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"EditMyMP3 MP3 Converter","url":"/mp3-converter/","applicationCategory":"MultimediaApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}</script>
+</head>
+<body data-focus="converter">
+  <div class="page-shell">
+    <header class="topbar">
+      <a class="brand" href="/" aria-label="EditMyMP3 home"><span class="brand-mark" aria-hidden="true">∿</span><span>EditMyMP3</span></a>
+      <span class="privacy-pill">🔒 Files stay on your device</span>
+      <nav class="tool-nav" aria-label="MP3 tools"><a href="/mp3-cutter/">Cut</a><a href="/merge-mp3/">Merge</a><a href="/mp3-volume-booster/">Volume</a><a href="/audio-speed-changer/">Speed</a><a class="active" aria-current="page" href="/mp3-converter/">Convert</a></nav>
+    </header>
+    <main>
+      <section class="hero converter-hero">
+        <div class="eyebrow">MP3 CONVERTER • PRIVATE • FREE</div>
+        <h1>Convert MP3 to WAV.<br><span>Right in your browser.</span></h1>
+        <p>Choose an MP3 and create an uncompressed WAV copy. Your audio is processed on your device and is not uploaded to our server.</p>
+      </section>
+
+      <section class="converter-card" id="converterTool">
+        <label class="upload-box" id="convertUploadBox">
+          <input type="file" id="convertFileInput" accept="audio/mpeg,audio/mp3,.mp3" />
+          <div class="upload-icon">🔄</div>
+          <strong>Choose an MP3 to convert</strong>
+          <small>MP3 → WAV</small>
+          <div id="convertStatus" class="upload-status" aria-live="polite"></div>
+        </label>
+
+        <div class="converter-workspace hidden" id="converterWorkspace">
+          <div class="file-card">
+            <div><div class="file-label">SOURCE MP3</div><h2 id="convertFileName">audio.mp3</h2><p><span id="convertFileSize">0 MB</span> • <span id="convertDuration">00:00</span></p></div>
+            <button class="ghost-button" id="convertReplaceBtn" type="button">Replace</button>
+          </div>
+          <audio id="convertSourcePlayer" controls></audio>
+          <div class="conversion-flow"><span class="format-pill active">MP3</span><span>→</span><span class="format-pill">WAV</span></div>
+          <div class="converter-note"><strong>Why WAV?</strong><span>WAV is uncompressed and useful for editing, archiving, and apps that require PCM audio. The file will usually be larger than the MP3.</span></div>
+          <button class="primary-button" id="convertBtn" type="button">🔄 Convert to WAV</button>
+          <div class="progress-card hidden" id="convertProgress"><div class="progress-top"><strong id="convertProgressLabel">Converting…</strong><span id="convertProgressPercent">0%</span></div><div class="progress-track"><div class="progress-fill" id="convertProgressFill"></div></div><small>Conversion happens locally on this device.</small></div>
+          <section class="result-card hidden" id="convertResult"><div class="success-icon">✓</div><h3>Your WAV is ready</h3><p>No audio was uploaded to our server.</p><audio id="convertResultPlayer" controls></audio><a class="download-button" id="convertDownloadBtn" download="converted.wav">⬇ Save WAV</a></section>
+        </div>
+      </section>
+
+      <section class="feature-strip"><div><span>🔒</span><strong>Private</strong><small>Local processing</small></div><div><span>📱</span><strong>Phone ready</strong><small>Works in modern browsers</small></div><div><span>💸</span><strong>Free</strong><small>No account needed</small></div></section>
+      <section class="seo-copy"><h2>Free MP3 to WAV converter</h2><p>EditMyMP3 converts MP3 audio to 16-bit PCM WAV in your browser. This is useful when an editor, DAW, presentation app or other workflow needs WAV instead of MP3. The source file stays on your device during conversion.</p></section>
+      <section class="related-tools"><h2>More MP3 tools</h2><div class="tool-link-grid"><a class="tool-link-card" href="/mp3-cutter/"><span>✂️</span><strong>Cut MP3</strong><small>Trim any section.</small></a><a class="tool-link-card" href="/merge-mp3/"><span>🔗</span><strong>Merge MP3</strong><small>Join several files.</small></a><a class="tool-link-card" href="/"><span>✦</span><strong>AI MP3 Editor</strong><small>Describe your edit.</small></a></div></section>
+    </main>
+    <footer><div><strong>EditMyMP3</strong><span>Built for quick edits.</span></div><div class="footer-links"><a href="/about.html">About</a><a href="/privacy.html">Privacy</a><a href="/terms.html">Terms</a></div></footer>
+  </div>
+  <script src="/converter.js"></script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+{
+  "name": "EditMyMP3",
+  "short_name": "EditMyMP3",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f7f7f4",
+  "theme_color": "#111111",
+  "description": "Private browser MP3 editor with AI and manual tools."
+}

@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#111111" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <meta name="description" content="Free online MP3 editor for cutting, merging, volume, speed, fades and AI-assisted edits. Your audio is processed locally in your browser." />
+  <title>Free Online MP3 Editor – Cut, Merge &amp; Edit MP3 | EditMyMP3</title>
+  <link rel="stylesheet" href="/style.css" />
+  <link rel="canonical" href="/" />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Free Online MP3 Editor – Cut, Merge &amp; Edit MP3 | EditMyMP3" />
+  <meta property="og:description" content="Free online MP3 editor for cutting, merging, volume, speed, fades and AI-assisted edits. Your audio is processed locally in your browser." />
+  <meta property="og:url" content="/" />
+  <meta name="twitter:card" content="summary" />
+  <script type="application/ld+json">{"@context": "https://schema.org", "@type": "WebApplication", "name": "EditMyMP3", "url": "/", "applicationCategory": "MultimediaApplication", "operatingSystem": "Any", "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"}, "description": "Free online MP3 editor for cutting, merging, volume, speed, fades and AI-assisted edits. Your audio is processed locally in your browser."}</script>
+</head>
+<body data-focus="ai">
+  <div class="page-shell">
+    <header class="topbar">
+      <a class="brand" href="/" aria-label="EditMyMP3 home">
+        <span class="brand-mark" aria-hidden="true">∿</span>
+        <span>EditMyMP3</span>
+      </a>
+      <span class="privacy-pill">🔒 Files stay on your device</span>
+      <nav class="tool-nav" aria-label="MP3 tools">
+        <a href="/mp3-cutter/">Cut</a>
+        <a href="/merge-mp3/">Merge</a>
+        <a href="/mp3-volume-booster/">Volume</a>
+        <a href="/audio-speed-changer/">Speed</a>
+        <a href="/mp3-converter/">Convert</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div class="eyebrow">FAST • PRIVATE • MOBILE FRIENDLY</div>
+        <h1>The MP3 editor<br><span>you can talk to.</span></h1>
+        <p>Cut, merge, change volume or speed yourself — or simply tell AI what you want. Your MP3 stays on your device.</p>
+
+        <label class="upload-box" id="uploadBox">
+          <input type="file" id="fileInput" accept="audio/mpeg,.mp3" />
+          <div class="upload-icon" aria-hidden="true">↑</div>
+          <strong>Choose an MP3 file</strong>
+          <small>or tap here to browse your phone</small>
+          <div id="uploadStatus" class="upload-status" aria-live="polite"></div>
+        </label>
+
+        <div class="loader-card hidden" id="engineLoader">
+          <div class="spinner"></div>
+          <div>
+            <strong>Preparing the MP3 engine…</strong>
+            <p>This happens once per page load.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="editor hidden" id="editor">
+        <div class="file-card">
+          <div>
+            <div class="file-label">CURRENT FILE</div>
+            <h2 id="fileName">audio.mp3</h2>
+            <p><span id="fileSize">0 MB</span> • <span id="durationText">00:00</span></p>
+          </div>
+          <button class="ghost-button" id="replaceFileBtn">Replace</button>
+        </div>
+
+        <audio id="audioPlayer" controls preload="metadata"></audio>
+
+        <div class="mode-switch" role="tablist" aria-label="Editing mode">
+          <button class="mode-button active" id="aiModeBtn" type="button" role="tab" aria-selected="true">✦ AI edit</button>
+          <button class="mode-button" id="manualModeBtn" type="button" role="tab" aria-selected="false">Manual controls</button>
+        </div>
+
+        <section class="ai-panel" id="aiPanel">
+          <div class="ai-intro">
+            <div class="ai-orb">✦</div>
+            <div>
+              <h3>Describe the edit. AI sets it up.</h3>
+              <p>Type what you want in everyday language. Review the plan, apply it, or fine-tune everything manually.</p>
+            </div>
+          </div>
+
+          <label class="ai-command-label" for="aiCommand">YOUR EDIT INSTRUCTION <span>Plain English works</span></label>
+          <div class="ai-command-box">
+            <textarea id="aiCommand" rows="4" maxlength="500" placeholder="Example: Remove the first 10 seconds, make it 20% louder and fade out for 3 seconds."></textarea>
+            <button class="ai-send-button" id="aiPlanBtn" type="button">Generate plan&nbsp; ✦</button>
+          </div>
+
+          <div class="ai-examples">
+            <span>Tap an example</span>
+            <button type="button" class="example-chip">Cut the first 10 seconds and make it 20% louder</button>
+            <button type="button" class="example-chip">Keep 0:15 to 1:05, speed it to 1.25× and fade out for 3 seconds</button>
+            <button type="button" class="example-chip">Normalize it and add a 2 second fade in</button>
+          </div>
+
+          <div class="ai-privacy-note">
+            <span>🔒</span>
+            <p><strong>Your MP3 is not sent to the AI.</strong> Only your command and the audio duration are sent so the AI can create an edit plan.</p>
+          </div>
+
+          <div class="ai-loading hidden" id="aiLoading">
+            <span class="ai-thinking-dot"></span>
+            <span>Building your edit plan…</span>
+          </div>
+
+          <section class="ai-plan hidden" id="aiPlanCard">
+            <div class="ai-plan-head">
+              <div>
+                <span class="plan-kicker">AI EDIT PLAN</span>
+                <h3 id="aiPlanSummary">Ready to apply</h3>
+              </div>
+              <span class="plan-ready">Ready</span>
+            </div>
+            <div class="ai-plan-list" id="aiPlanList"></div>
+            <div class="ai-plan-actions">
+              <button class="primary-button" id="aiApplyBtn" type="button">Apply AI edit&nbsp; ✦</button>
+              <button class="ghost-button full" id="aiAdjustBtn" type="button">Adjust manually</button>
+            </div>
+          </section>
+
+          <div class="ai-error hidden" id="aiError" role="alert"></div>
+        </section>
+
+        <div class="manual-panel hidden" id="manualPanel">
+        <section class="tool-card" id="trimToolCard">
+          <div class="tool-heading">
+            <div class="tool-icon">✂️</div>
+            <div>
+              <h3>Trim / Cut</h3>
+              <p>Keep only the part you want.</p>
+            </div>
+          </div>
+
+          <div class="trim-times" aria-live="polite">
+            <div class="trim-time-pill">
+              <span>START</span>
+              <strong id="startTimeLabel">00:00</strong>
+            </div>
+            <div class="trim-time-pill end">
+              <span>END</span>
+              <strong id="endTimeLabel">00:00</strong>
+            </div>
+          </div>
+
+          <div class="trim-slider" id="trimSlider">
+            <div class="trim-track"></div>
+            <div class="trim-selection" id="trimSelection"></div>
+            <input class="trim-range trim-range-start" type="range" id="startRange" min="0" max="1" step="0.01" value="0" aria-label="Trim start" />
+            <input class="trim-range trim-range-end" type="range" id="endRange" min="0" max="1" step="0.01" value="1" aria-label="Trim end" />
+          </div>
+
+          <div class="trim-actions">
+            <button type="button" class="mini-btn" id="previewSelectionBtn">▶ Preview selection</button>
+            <button type="button" class="mini-btn" id="resetTrimBtn">↺ Reset</button>
+          </div>
+          <p class="hint">Drag the two handles to choose the part you want to keep.</p>
+        </section>
+
+        <section class="tool-card" id="volumeToolCard">
+          <div class="tool-heading">
+            <div class="tool-icon">🔊</div>
+            <div>
+              <h3>Volume</h3>
+              <p>Make your MP3 quieter or louder.</p>
+            </div>
+          </div>
+
+          <div class="range-row">
+            <input type="range" id="volumeRange" min="25" max="200" step="5" value="100" />
+            <output id="volumeOutput">100%</output>
+          </div>
+        </section>
+
+        <section class="tool-card" id="speedToolCard">
+          <div class="tool-heading">
+            <div class="tool-icon">⚡</div>
+            <div>
+              <h3>Speed</h3>
+              <p>Slow down or speed up the audio.</p>
+            </div>
+          </div>
+
+          <div class="speed-grid" id="speedGrid">
+            <button data-speed="0.5">0.5×</button>
+            <button data-speed="0.75">0.75×</button>
+            <button class="active" data-speed="1">1×</button>
+            <button data-speed="1.25">1.25×</button>
+            <button data-speed="1.5">1.5×</button>
+            <button data-speed="2">2×</button>
+          </div>
+        </section>
+
+        <section class="tool-card" id="fadeToolCard">
+          <div class="tool-heading">
+            <div class="tool-icon">🌊</div>
+            <div>
+              <h3>Fade</h3>
+              <p>Soften the beginning or ending.</p>
+            </div>
+          </div>
+
+          <div class="two-col">
+            <label>
+              <span>Fade in</span>
+              <select id="fadeIn">
+                <option value="0">None</option>
+                <option value="1">1 second</option>
+                <option value="2">2 seconds</option>
+                <option value="3">3 seconds</option>
+                <option value="5">5 seconds</option>
+              </select>
+            </label>
+            <label>
+              <span>Fade out</span>
+              <select id="fadeOut">
+                <option value="0">None</option>
+                <option value="1">1 second</option>
+                <option value="2">2 seconds</option>
+                <option value="3">3 seconds</option>
+                <option value="5">5 seconds</option>
+              </select>
+            </label>
+          </div>
+        </section>
+
+        <section class="tool-card switches">
+          <label class="switch-row">
+            <div>
+              <strong>Normalize audio</strong>
+              <small>Balance overall loudness.</small>
+            </div>
+            <input type="checkbox" id="normalizeCheck" />
+          </label>
+
+          <label class="switch-row">
+            <div>
+              <strong>Reverse audio</strong>
+              <small>Play the edited MP3 backwards.</small>
+            </div>
+            <input type="checkbox" id="reverseCheck" />
+          </label>
+        </section>
+
+        <button class="primary-button" id="processBtn">
+          <span>Export edited MP3&nbsp; ↗</span>
+        </button>
+
+        </div>
+
+        <div class="progress-card hidden" id="progressCard">
+          <div class="progress-top">
+            <strong id="progressLabel">Processing…</strong>
+            <span id="progressPercent">0%</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill" id="progressFill"></div>
+          </div>
+          <small>Keep this tab open while your phone processes the file.</small>
+        </div>
+
+        <section class="result-card hidden" id="resultCard">
+          <div class="success-icon">✓</div>
+          <h3>Your MP3 is ready</h3>
+          <p>No audio was uploaded to our server.</p>
+          <audio id="resultPlayer" controls></audio>
+          <a class="download-button" id="downloadBtn" download="edited.mp3">⬇ Save edited MP3</a>
+          <button class="ghost-button full" id="editAgainBtn">Edit another file</button>
+        </section>
+      </section>
+
+
+      <section class="merge-section" id="mergeTool">
+        <div class="section-kicker">MANUAL MERGE TOOL</div>
+        <div class="section-heading-row">
+          <div>
+            <h2>Merge MP3 files</h2>
+            <p>Join several MP3 files into one. Arrange them in the exact order you want.</p>
+          </div>
+          <div class="merge-badge">🎵 + 🎵</div>
+        </div>
+
+        <label class="merge-upload-box" id="mergeUploadBox">
+          <input type="file" id="mergeFileInput" accept="audio/mpeg,audio/mp3,.mp3" multiple />
+          <span class="merge-upload-icon">＋</span>
+          <strong>Add MP3 files</strong>
+          <small>Select 2 or more files from your phone</small>
+        </label>
+
+        <div id="mergeStatus" class="upload-status" aria-live="polite"></div>
+
+        <div class="merge-list hidden" id="mergeList"></div>
+
+        <div class="merge-summary hidden" id="mergeSummary">
+          <span><strong id="mergeCount">0</strong> files</span>
+          <span>•</span>
+          <span><strong id="mergeDuration">00:00</strong> total</span>
+        </div>
+
+        <button class="primary-button hidden" id="mergeBtn">
+          <span>🔗 Merge into one MP3</span>
+        </button>
+
+        <div class="progress-card hidden" id="mergeProgressCard">
+          <div class="progress-top">
+            <strong id="mergeProgressLabel">Preparing files…</strong>
+            <span id="mergeProgressPercent">0%</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill" id="mergeProgressFill"></div>
+          </div>
+          <small>Large or long audio files may use more memory on a phone.</small>
+        </div>
+
+        <section class="result-card hidden" id="mergeResultCard">
+          <div class="success-icon">✓</div>
+          <h3>Merged MP3 is ready</h3>
+          <p>Your source files stayed on this device.</p>
+          <audio id="mergeResultPlayer" controls></audio>
+          <a class="download-button" id="mergeDownloadBtn" download="merged.mp3">⬇ Save merged MP3</a>
+          <button class="ghost-button full" id="clearMergeBtn">Start a new merge</button>
+        </section>
+      </section>
+
+
+      <section class="popular-tools" aria-labelledby="popularToolsTitle">
+        <div class="section-kicker">POPULAR MP3 TOOLS</div>
+        <div class="section-title-row">
+          <div>
+            <h2 id="popularToolsTitle">Choose what you want to do</h2>
+            <p>Every tool works on phone and desktop. For editing, you can use AI or manual controls.</p>
+          </div>
+        </div>
+        <div class="tool-link-grid">
+          <a class="tool-link-card" href="/mp3-cutter/"><span>✂️</span><strong>Cut MP3</strong><small>Trim the beginning, end, or any section.</small></a>
+          <a class="tool-link-card" href="/merge-mp3/"><span>🔗</span><strong>Merge MP3</strong><small>Join several MP3 files in your chosen order.</small></a>
+          <a class="tool-link-card" href="/mp3-volume-booster/"><span>🔊</span><strong>Boost Volume</strong><small>Make a quiet MP3 louder in your browser.</small></a>
+          <a class="tool-link-card" href="/audio-speed-changer/"><span>⚡</span><strong>Change Speed</strong><small>Speed up or slow down your MP3.</small></a>
+          <a class="tool-link-card" href="/mp3-converter/"><span>🔄</span><strong>MP3 Converter</strong><small>Convert an MP3 to WAV without uploading it.</small></a>
+          <a class="tool-link-card ai-card-link" href="/#uploadBox"><span>✦</span><strong>AI MP3 Editor</strong><small>Describe the edit in plain English.</small></a>
+        </div>
+      </section>
+
+      <section class="feature-strip">
+        <div><span>🔒</span><strong>Private</strong><small>Local processing</small></div>
+        <div><span>📱</span><strong>Phone ready</strong><small>Works in mobile browsers</small></div>
+        <div><span>💸</span><strong>Free</strong><small>No account needed</small></div>
+      </section>
+
+      <section class="seo-copy"><h2>Free online MP3 editor with AI and manual controls</h2><p>EditMyMP3 gives you a simple MP3 cutter, merger, volume booster, speed changer, fades, normalization and reverse controls in one mobile-friendly editor. The AI planner can translate a plain-English instruction into settings, while the audio processing itself happens locally in your browser.</p></section>
+    </main>
+
+    <footer>
+      <div><strong>EditMyMP3</strong><span>Built for quick edits.</span></div>
+      <div class="footer-links"><a href="/about.html">About</a><a href="/privacy.html">Privacy</a><a href="/terms.html">Terms</a></div>
+    </footer>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lamejs/1.2.1/lame.min.js"></script>
+  <script src="/app.js"></script>
+</body>
+</html>
