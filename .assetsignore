@@ -1,0 +1,17 @@
+# Server-side code and deployment configuration
+_worker.js
+wrangler.jsonc
+.assetsignore
+
+# Secrets, dependencies, source control, and local Wrangler state
+.dev.vars
+.env
+.env.*
+node_modules/
+.git/
+.wrangler/
+
+# Project-only documentation
+README.md
+DEPLOY.txt
+PROJECT_GUIDE.txt

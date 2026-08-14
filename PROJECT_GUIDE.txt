@@ -1,0 +1,491 @@
+EDITMYMP3 PROJECT GUIDE
+=======================
+
+1. PROJECT SUMMARY
+------------------
+
+EditMyMP3 is a static, mobile-friendly collection of browser-based audio tools.
+It can trim MP3 files, change their volume or speed, add fades, normalize or
+reverse audio, merge several MP3 files, and convert MP3 files to WAV.
+
+Most processing happens locally in the user's browser. The source audio is not
+sent to the application server. The optional AI feature sends only the user's
+written instruction and the audio duration to a Cloudflare server endpoint. The
+AI converts that instruction into editor settings; it does not process audio.
+
+The application deliberately has no frontend framework, package manifest,
+bundler, database, login system, or build step. It consists of HTML, CSS, and
+plain JavaScript, plus one Cloudflare Pages Worker.
+
+
+2. DIRECTORY AND FILE MAP
+-------------------------
+
+index.html
+  Main landing page and full editor. It emphasizes the AI editor, but includes
+  all manual editing controls and the merge tool.
+
+app.js
+  Shared application logic for the main page and the cutter, volume, speed, and
+  merge SEO pages. It handles file selection, browser decoding, editing, MP3
+  encoding, AI plans, merging, progress UI, previews, and downloads.
+
+converter.js
+  Logic used only by the MP3-to-WAV converter page. It decodes an MP3 and writes
+  a standard 16-bit PCM WAV file.
+
+style.css
+  Shared styles for every page. It contains the color tokens, layout, cards,
+  controls, editor, merge and converter components, responsive breakpoints,
+  mobile navigation, and utility classes such as .hidden.
+
+_worker.js
+  Cloudflare Pages Worker. It implements POST /api/ai, generates robots.txt and
+  sitemap.xml using the active deployment domain, redirects /mp3-to-wav to the
+  converter page, and delegates all other requests to Cloudflare static assets.
+
+mp3-cutter/index.html
+  SEO landing page for trimming. It contains the full shared editor and sets
+  body data-focus="cutter" so app.js highlights the trim controls after upload.
+
+mp3-volume-booster/index.html
+  SEO landing page for volume editing. It sets data-focus="volume".
+
+audio-speed-changer/index.html
+  SEO landing page for speed changes. It sets data-focus="speed".
+
+merge-mp3/index.html
+  SEO landing page that places the merge UI prominently and sets
+  data-focus="merge". It also contains the shared single-file editor.
+
+mp3-converter/index.html
+  Smaller standalone MP3-to-WAV page. It uses converter.js, not app.js.
+
+about.html, privacy.html, terms.html
+  Informational and legal pages. privacy.html still contains a placeholder
+  contact sentence that must be replaced before a public launch.
+
+404.html
+  Custom static not-found page.
+
+manifest.webmanifest
+  Basic installable-web-app metadata, colors, name, and standalone display mode.
+  There is currently no service worker, offline cache, or application icon list.
+
+robots.txt and sitemap.xml
+  Static fallback versions. On Cloudflare, _worker.js responds dynamically at
+  these paths so sitemap URLs use the real origin.
+
+README.md and DEPLOY.txt
+  Short deployment and launch notes.
+
+.dev.vars
+  Local Cloudflare Worker secrets, including GROQ_API_KEY. This file is ignored
+  by Git and must never be committed or served as a public static asset.
+
+.gitignore
+  Excludes .dev.vars, environment files, and node_modules.
+
+
+3. RUNTIME ARCHITECTURE
+-----------------------
+
+The application has two execution environments:
+
+A. Browser
+  - Displays the interface.
+  - Reads local files selected by the user.
+  - Decodes MP3 data into raw PCM samples.
+  - Applies all audio transformations.
+  - Encodes edited or merged samples as MP3.
+  - Writes decoded samples as WAV for conversion.
+  - Creates temporary blob URLs for preview and download.
+
+B. Cloudflare Pages Worker
+  - Serves the AI planning endpoint.
+  - Keeps the Groq API key out of browser code.
+  - Generates deployment-aware SEO files.
+  - Serves the static site through the ASSETS binding.
+
+There is no persistent server state. No audio, account, project, or edit plan is
+stored by the application.
+
+
+4. LIBRARIES AND PLATFORM APIs
+------------------------------
+
+External library: lamejs 1.2.1
+  Loaded from cdnjs on all pages that use app.js:
+  https://cdnjs.cloudflare.com/ajax/libs/lamejs/1.2.1/lame.min.js
+
+  lamejs is a JavaScript implementation of the LAME MP3 encoder. The project
+  uses lamejs.Mp3Encoder to generate constant 192 kbps MP3 output. It accepts
+  mono or stereo signed 16-bit PCM blocks and returns encoded MP3 bytes.
+
+  Consequence: editing is local, but MP3 export currently depends on cdnjs being
+  reachable when the page loads. If the library fails to load, app.js reports an
+  encoder-library error. Vendoring lame.min.js would remove this runtime network
+  dependency and make the privacy/offline story stronger.
+
+External service: Groq Chat Completions API
+  Endpoint: https://api.groq.com/openai/v1/chat/completions
+  Model: openai/gpt-oss-20b
+
+  Groq is used only to translate plain-language commands into a structured edit
+  plan. The request contains the instruction and duration, not the MP3 bytes.
+  The response is constrained by a JSON schema in _worker.js.
+
+Cloudflare Pages / Workers
+  The site expects Cloudflare Pages' ASSETS binding and an encrypted environment
+  variable named GROQ_API_KEY. Wrangler provides these capabilities locally.
+
+Browser APIs used
+  - File and FileList: receive user-selected local files.
+  - File.arrayBuffer(): read file bytes into memory.
+  - AudioContext / webkitAudioContext: decode MP3 into AudioBuffer data.
+  - AudioBuffer.getChannelData(): access Float32 PCM channel samples.
+  - Blob: package encoded MP3 bytes or generated WAV bytes.
+  - URL.createObjectURL(): create local preview/download URLs.
+  - URL.revokeObjectURL(): release old URLs and their retained memory.
+  - HTMLAudioElement: play source and result audio.
+  - Fetch API: call /api/ai and call Groq from the Worker.
+  - Typed arrays and DataView: process samples and write binary formats.
+
+CSS and fonts
+  There is no CSS framework. style.css uses custom properties, CSS Grid,
+  Flexbox, gradients, backdrop filters, media queries, and system fallbacks.
+  The font stacks mention DM Sans and Manrope, but the pages do not import web
+  font files; browsers normally fall back to installed/system sans-serif fonts.
+
+
+5. SINGLE-FILE EDITING LOGIC
+----------------------------
+
+File selection
+  app.js accepts files whose name ends in .mp3 or whose MIME type is audio/mpeg
+  or audio/mp3. Selection works through the file input and drag-and-drop.
+
+Decoding
+  The selected file is read as an ArrayBuffer. A copy is passed to
+  AudioContext.decodeAudioData because Safari may detach the supplied buffer.
+  The resulting AudioBuffer contains sample rate, duration, channel count, and
+  floating-point PCM data, normally in the range -1 to +1.
+
+Trim
+  Two range inputs represent the start and end time. The UI enforces a small
+  positive gap. Export converts seconds into sample-frame indexes and copies only
+  that subarray from every used channel.
+
+Speed
+  Supported presets are 0.5, 0.75, 1, 1.25, 1.5, and 2 times normal speed.
+  app.js performs linear resampling: output sample i is interpolated between the
+  neighboring source samples around i * speed. Faster settings produce fewer
+  samples; slower settings produce more samples.
+
+  This simple algorithm changes pitch together with speed. It is not a
+  pitch-preserving time-stretch algorithm, and linear interpolation is lower
+  quality than a production resampler.
+
+Volume
+  Each sample is multiplied by volumeRange / 100. The UI supports 25% through
+  200% in 5% steps. Values above 100% can clip when the result is converted to
+  signed 16-bit samples unless normalization or sufficient headroom prevents it.
+
+Normalization
+  app.js scans every output channel for the largest absolute sample. If the peak
+  is nonzero, it calculates a gain that brings that peak to 0.98. The user volume
+  multiplier and normalization multiplier are applied together. This is peak
+  normalization, not perceived-loudness/LUFS normalization.
+
+Fade in and fade out
+  Fade durations can be 0, 1, 2, 3, or 5 seconds. A linear gain ramp is applied
+  at the beginning and/or end. Frame counts are adjusted for the selected speed.
+
+Reverse
+  After gains and fades are applied, each channel's sample array is reversed.
+  Because reversal happens after fade calculation, the already-shaped audio is
+  reversed too; conceptually, the audible fade positions swap when reversed.
+
+Channels
+  Mono remains mono. The first two channels of stereo/multichannel audio become
+  the output channels. Extra channels are softly mixed alternately into left and
+  right. This is a simple downmix and does not use a formal surround matrix.
+
+MP3 encoding
+  Float32 samples are clamped to -1 through +1 and converted to signed Int16.
+  lamejs encodes blocks of 1,152 frames at 192 kbps. The final encoder buffer is
+  flushed, all byte chunks are placed in an audio/mpeg Blob, and an object URL is
+  assigned to the result player and download link.
+
+Export filename
+  A source named example.mp3 downloads as example-edited.mp3.
+
+
+6. MERGE LOGIC
+--------------
+
+The merge tool requires at least two files. Every accepted MP3 is decoded into
+an AudioBuffer when added. Files are kept in the mergeItems array with their
+original File object and decoded buffer.
+
+The interface can move items up or down, remove items, show total duration, and
+reject an apparent duplicate based on name, size, and lastModified.
+
+Before concatenation, app.js selects a common target rate near the first file's
+sample rate: 48,000, 44,100, 32,000, 24,000, or 22,050 Hz. Every channel is
+linearly resampled to that rate. Mono is copied to both stereo channels, stereo
+uses its first two channels, and additional channels are softly downmixed.
+
+Two large Float32Array objects are allocated for the combined left and right
+channels. Each file is copied into them in the displayed order, with no silence
+or crossfade between files. The combined arrays are sent to the same 192 kbps
+lamejs encoder used by the editor. The output name is merged-mp3.mp3.
+
+
+7. MP3-TO-WAV CONVERTER LOGIC
+-----------------------------
+
+converter.js independently validates and decodes one MP3. It creates a binary
+WAV file with:
+  - RIFF container
+  - WAVE format
+  - PCM format code 1
+  - one or two channels (additional input channels are omitted)
+  - original decoded sample rate
+  - 16 bits per sample
+  - interleaved little-endian signed PCM samples
+
+It manually writes the 44-byte RIFF/WAV header with DataView, then writes each
+frame and channel. The resulting Blob has type audio/wav. No third-party library
+is needed for WAV output. The downloaded name retains the source base name and
+changes the extension to .wav.
+
+WAV is uncompressed, so the generated file can be much larger than its MP3.
+
+
+8. AI EDIT-PLANNING LOGIC
+-------------------------
+
+Frontend flow
+  1. A user loads one MP3 and enters an instruction of up to 500 characters.
+  2. app.js sends POST /api/ai with JSON containing command and duration.
+  3. It reads the returned plan and sanitizes every value.
+  4. The UI displays a summary of trim, volume, speed, fade, normalization, and
+     reverse settings.
+  5. Applying the plan copies those settings into the manual controls.
+  6. Normal browser audio processing performs the actual edit.
+
+Worker validation
+  _worker.js accepts POST only. It verifies that a Groq key exists, parses JSON,
+  requires a nonempty command no longer than 500 characters, and accepts audio
+  durations greater than zero and no longer than 86,400 seconds.
+
+Prompt behavior
+  The system prompt lists the supported operations and conservative mappings for
+  phrases such as "slightly louder" or "remove the last 10 seconds." It instructs
+  the model to reject unsupported work such as transcription, noise removal,
+  voice isolation, EQ, pitch shifting, content-aware cutting, and merging inside
+  the single-file editor.
+
+Structured response
+  The response schema requires can_apply, summary, message, trim bounds, volume,
+  speed, both fades, normalize, and reverse. Speed is expressed as a number from
+  0.5 through 2 because Groq rejects a numeric enum containing both fractional
+  and whole-number JSON values. The browser subsequently accepts only the six
+  supported speed presets and falls back to 1x for any other value.
+
+Client-side sanitization
+  app.js clamps trim times to the real duration, resets an invalid trim range,
+  rounds volume to a 5% step between 25% and 200%, restricts speed and fades to
+  known choices, coerces flags to booleans, and supplies safe text/defaults.
+
+Error handling
+  The Worker returns descriptive JSON errors for invalid requests, missing
+  configuration, rejected API keys, provider rate limits, network failures,
+  empty model output, and invalid model JSON. The frontend displays these errors
+  without attempting to apply a plan.
+
+Security/operations note
+  /api/ai has input limits but no user authentication, CAPTCHA, durable rate
+  limiting, or per-IP quota. A publicly deployed site can therefore consume the
+  configured Groq allowance if automated clients call the endpoint repeatedly.
+  Cloudflare rate-limiting/WAF rules should be considered before significant
+  public traffic.
+
+
+9. PAGE AND SEO STRATEGY
+------------------------
+
+The main editor and four focused MP3 pages intentionally duplicate most editor
+markup. Each focused page supplies a distinct title, meta description, canonical
+path, Open Graph data, JSON-LD WebApplication data, headline, explanatory copy,
+and active navigation state. This targets search intent while delivering a real
+usable tool at every URL.
+
+body[data-focus] tells app.js what to emphasize after an upload:
+  ai        main editor behavior
+  cutter    reveal manual mode and focus the trim card
+  volume    reveal manual mode and focus the volume card
+  speed     reveal manual mode and focus the speed card
+  merge     leave the merge-focused layout alone
+  converter converter page uses its own script
+
+Because the editor markup is duplicated, any control, accessibility, or layout
+change must normally be copied to index.html and all four shared-editor pages.
+Failure to keep IDs and markup aligned can cause app.js event binding errors.
+
+The Worker-generated sitemap includes all tool pages plus About, Privacy, and
+Terms. The Worker-generated robots file links to the sitemap on the live origin.
+/mp3-to-wav and /mp3-to-wav/ permanently redirect to /mp3-converter/.
+
+
+10. LOCAL DEVELOPMENT
+---------------------
+
+Requirements
+  - A modern browser
+  - Node.js and npm/npx
+  - Internet access for first-time Wrangler download, lamejs CDN loading, and
+    Groq AI calls
+  - A valid GROQ_API_KEY in .dev.vars for AI testing
+
+From the project root, run:
+
+  npx wrangler pages dev .
+
+Open the localhost URL Wrangler prints, normally http://localhost:8788.
+Wrangler is important because it executes _worker.js and exposes /api/ai. A basic
+static file server can display the site and run local audio tools, but AI calls
+will fail because no Worker route exists.
+
+Static-only alternative:
+
+  python -m http.server 8000
+
+Then open http://localhost:8000. Do not use this mode to test AI integration.
+
+There is no npm install, npm build, or compiled output directory in the current
+project. There are also no automated unit, integration, or browser tests.
+
+
+11. CLOUDFLARE DEPLOYMENT
+-------------------------
+
+Deploy all files and directories, including _worker.js, to a Cloudflare Pages
+project. In Workers & Pages project settings, add GROQ_API_KEY as an encrypted
+secret and redeploy.
+
+After deployment, verify:
+  - GET /api/ai returns a 405 JSON method error.
+  - A real AI edit instruction succeeds through POST /api/ai.
+  - /sitemap.xml contains the real pages.dev or custom domain.
+  - /robots.txt points to that sitemap.
+  - /mp3-to-wav redirects to /mp3-converter/.
+  - Every tool works on iPhone Safari and Android Chrome.
+  - MP3 encoding loads successfully from cdnjs.
+
+Before launch, replace the Privacy contact placeholder, adapt legal text to the
+actual business and jurisdiction, disclose any analytics/advertising/cookies,
+verify the site in Google Search Console, and submit /sitemap.xml.
+
+
+12. PRIVACY AND DATA MOVEMENT
+-----------------------------
+
+Normal edit, merge, and conversion operations use browser memory only. Object
+URLs refer to in-memory/local Blob data and are not uploads. The application does
+not intentionally transmit source audio.
+
+Using AI sends two pieces of information through Cloudflare to Groq:
+  - the user's written edit instruction
+  - the decoded audio duration
+
+The current application has no analytics code. If analytics, advertising, error
+monitoring, or additional CDNs are added, the privacy page and consent behavior
+must be updated accordingly.
+
+
+13. LIMITATIONS AND TECHNICAL RISKS
+----------------------------------
+
+Memory and performance
+  AudioBuffer data is fully decoded in memory. Editing creates additional sample
+  arrays, Int16 arrays, encoded chunks, and a result Blob. Merging can hold every
+  decoded source plus combined channels at once. Long or high-rate files may be
+  slow, freeze a mobile tab, or exhaust memory.
+
+Main-thread processing
+  Resampling, effects, WAV writing, concatenation, and MP3 encoding run on the UI
+  thread. Short timeout yields let the browser paint progress states, but heavy
+  loops can still make the page temporarily unresponsive. Web Workers would be a
+  substantial improvement for long files.
+
+Audio quality
+  Every edited or merged MP3 is decoded and lossy-encoded again at 192 kbps.
+  Linear resampling can introduce artifacts, speed changes alter pitch, peak
+  normalization is not loudness normalization, and gain above full scale clips
+  during Int16 conversion.
+
+Format support
+  Input is intentionally limited to MP3 by filename/MIME checks, although actual
+  decoding ultimately depends on the browser. Output editing is MP3 only and the
+  converter output is PCM WAV only.
+
+Metadata
+  ID3 tags, cover art, chapters, and other MP3 metadata are not copied into newly
+  encoded files.
+
+Network dependencies
+  AI requires Cloudflare, Groq, a valid key, and available quota. MP3 export
+  requires the cdnjs-hosted lamejs script. WAV conversion itself has no external
+  runtime library dependency.
+
+Code duplication
+  Shared editor HTML is repeated across five pages rather than generated from a
+  template. Maintenance must account for every copy.
+
+Testing
+  No automated tests currently protect audio math, WAV headers, AI validation,
+  cross-browser behavior, accessibility, or duplicated page consistency.
+
+
+14. SAFE MAINTENANCE CHECKLIST
+------------------------------
+
+When changing editor controls:
+  - Update every shared-editor HTML page.
+  - Preserve IDs expected by app.js.
+  - Update the AI schema, prompt, sanitizer, plan renderer, control application,
+    and audio processing together when adding an AI-controllable operation.
+
+When changing audio code:
+  - Test mono, stereo, and unusual sample rates.
+  - Test very short clips and fades longer than the clip.
+  - Test output in Chrome, Firefox, desktop Safari, and iPhone Safari.
+  - Watch browser memory with several large merge inputs.
+  - Verify object URLs are revoked when results are replaced.
+
+When changing AI behavior:
+  - Keep GROQ_API_KEY server-side only.
+  - Keep request length and duration validation.
+  - Ensure the Groq response schema is accepted by the selected model/provider.
+  - Treat model output as untrusted and retain client-side sanitization.
+  - Test missing key, invalid key, rate limit, malformed request, and provider
+    outage behavior.
+
+When changing deployment:
+  - Preserve the Worker ASSETS fallback.
+  - Ensure secret files are excluded from uploads and Git.
+  - Recheck generated sitemap origins and redirects.
+  - Update privacy/legal disclosures for every new third-party service.
+
+
+15. CURRENT DESIGN PHILOSOPHY
+-----------------------------
+
+The project favors a small deployment surface, immediate use without accounts,
+local-first audio handling, mobile-friendly controls, and search-specific pages.
+Its central distinction is that AI is a constrained settings planner rather than
+an opaque audio-processing backend. This keeps source files on the device and
+makes every proposed AI edit visible and adjustable before export.
+
