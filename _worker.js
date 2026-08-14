@@ -8,7 +8,11 @@ const PLAN_SCHEMA = {
     trim_start: { type: "number", minimum: 0 },
     trim_end: { type: "number", minimum: 0 },
     volume_percent: { type: "integer", minimum: 25, maximum: 200 },
-    speed: { type: "number", enum: [0.5, 0.75, 1, 1.25, 1.5, 2] },
+    // Groq rejects numeric enums that contain both whole and fractional values,
+    // interpreting them as a mix of JSON Schema "integer" and "number" types.
+    // The prompt constrains the choices, and app.js snaps unexpected values back
+    // to one of the supported speed presets before applying the plan.
+    speed: { type: "number", minimum: 0.5, maximum: 2 },
     fade_in_seconds: { type: "integer", enum: [0, 1, 2, 3, 5] },
     fade_out_seconds: { type: "integer", enum: [0, 1, 2, 3, 5] },
     normalize: { type: "boolean" },
